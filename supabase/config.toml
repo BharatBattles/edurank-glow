@@ -4,4 +4,4 @@ project_id = "tahfemcxtbbixsvsurfq"
 verify_jwt = true
 
 [functions.find-video]
-verify_jwt = true
+verify_jwt = false
