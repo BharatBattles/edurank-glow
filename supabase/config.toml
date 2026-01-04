@@ -7,4 +7,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-quiz]
-verify_jwt = true
+verify_jwt = false
+
+[functions.adaptive-question]
+verify_jwt = false
