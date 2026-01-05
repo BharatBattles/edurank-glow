@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Credit cost for this operation
+const CREDIT_COST = 4;
+
 // Input validation and sanitization constants
 const MAX_NOTES_LENGTH = 50000;
 const MAX_ID_LENGTH = 100;
@@ -167,7 +170,7 @@ serve(async (req) => {
 
     console.log(`Generating quiz for todo: ${todoId}`);
 
-    // Check if quiz already exists
+    // Check if quiz already exists (no credit charge for returning existing)
     const { data: existingQuiz } = await supabaseClient
       .from("quizzes")
       .select("*")
@@ -180,6 +183,34 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Consume credits atomically using service role (only for new quiz generation)
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const { data: consumed, error: creditError } = await serviceClient.rpc('consume_credits', { 
+      uid: user.id, 
+      amount: CREDIT_COST 
+    });
+
+    if (creditError) {
+      console.error('Credit consumption error:', creditError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify credits' }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!consumed) {
+      return new Response(
+        JSON.stringify({ error: 'Insufficient credits (4 required). Please wait for monthly reset.' }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Consumed ${CREDIT_COST} credit(s) for user ${user.id}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

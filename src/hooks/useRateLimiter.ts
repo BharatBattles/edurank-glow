@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -44,73 +43,15 @@ export const useRateLimiter = () => {
     return true;
   }, [user]);
 
-  const consumeCredit = useCallback(async (): Promise<boolean> => {
-    if (!user) return false;
-
-    try {
-      // First check current credits
-      const { data: credits, error: fetchError } = await supabase
-        .from('user_credits')
-        .select('credits_remaining')
-        .eq('user_id', user.id)
-        .single();
-
-      if (fetchError) {
-        // Credits might not exist yet for existing users, create them
-        if (fetchError.code === 'PGRST116') {
-          const { error: insertError } = await supabase
-            .from('user_credits')
-            .insert({ user_id: user.id, credits_remaining: 100, credits_used: 0 });
-          
-          if (insertError) {
-            console.error('Failed to create credits:', insertError);
-            return true; // Allow the request anyway
-          }
-          return true;
-        }
-        console.error('Failed to fetch credits:', fetchError);
-        return true; // Allow the request on error
-      }
-
-      if (credits.credits_remaining <= 0) {
-        toast.error('No credits remaining. Please wait for your credits to reset.');
-        return false;
-      }
-
-      // Consume a credit
-      const { error: updateError } = await supabase
-        .from('user_credits')
-        .update({
-          credits_remaining: credits.credits_remaining - 1,
-          credits_used: (await supabase
-            .from('user_credits')
-            .select('credits_used')
-            .eq('user_id', user.id)
-            .single()
-            .then(r => r.data?.credits_used || 0)) + 1
-        })
-        .eq('user_id', user.id);
-
-      if (updateError) {
-        console.error('Failed to consume credit:', updateError);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Credit consumption error:', error);
-      return true; // Allow the request on error
-    }
-  }, [user]);
-
+  // Credit consumption is now handled server-side in edge functions
+  // This function just checks client-side rate limiting for UX
   const canMakeRequest = useCallback(async (): Promise<boolean> => {
-    if (!checkRateLimit()) return false;
-    return await consumeCredit();
-  }, [checkRateLimit, consumeCredit]);
+    return checkRateLimit();
+  }, [checkRateLimit]);
 
   return {
     isRateLimited,
     checkRateLimit,
-    consumeCredit,
     canMakeRequest,
   };
 };

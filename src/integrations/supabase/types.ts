@@ -465,7 +465,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_achievements: {
+        Args: { uid: string }
+        Returns: {
+          achievement_id: string
+          achievement_name: string
+          just_unlocked: boolean
+        }[]
+      }
+      check_and_reset_credits: {
+        Args: { uid: string }
+        Returns: {
+          credits_remaining: number
+          credits_used: number
+          was_reset: boolean
+        }[]
+      }
+      consume_credits: {
+        Args: { amount?: number; uid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

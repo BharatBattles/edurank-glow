@@ -1,9 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Credit cost for this operation
+const CREDIT_COST = 1;
 
 // Input validation and sanitization constants
 const MAX_TOPIC_LENGTH = 200;
@@ -23,15 +27,11 @@ const FORBIDDEN_PATTERNS = [
   /override\s+instructions/i,
 ];
 
-/**
- * Validates and sanitizes user input to prevent prompt injection
- */
 function sanitizeInput(input: string, maxLength: number = MAX_TOPIC_LENGTH): { isValid: boolean; sanitized: string; error?: string } {
   if (!input || typeof input !== 'string') {
     return { isValid: false, sanitized: '', error: 'Input must be a non-empty string' };
   }
 
-  // Trim and check length
   let sanitized = input.trim();
   if (sanitized.length === 0) {
     return { isValid: false, sanitized: '', error: 'Input cannot be empty' };
@@ -40,7 +40,6 @@ function sanitizeInput(input: string, maxLength: number = MAX_TOPIC_LENGTH): { i
     return { isValid: false, sanitized: '', error: `Input exceeds maximum length of ${maxLength} characters` };
   }
 
-  // Check for forbidden patterns (potential prompt injection)
   for (const pattern of FORBIDDEN_PATTERNS) {
     if (pattern.test(sanitized)) {
       console.warn('Potential prompt injection detected:', sanitized.substring(0, 50));
@@ -48,11 +47,10 @@ function sanitizeInput(input: string, maxLength: number = MAX_TOPIC_LENGTH): { i
     }
   }
 
-  // Remove potentially dangerous characters while keeping educational content readable
   sanitized = sanitized
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters
-    .replace(/[<>]/g, '') // Remove angle brackets
-    .replace(/\\/g, '') // Remove backslashes
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[<>]/g, '')
+    .replace(/\\/g, '')
     .trim();
 
   return { isValid: true, sanitized };
@@ -71,7 +69,6 @@ interface YouTubeVideo {
 }
 
 function formatDuration(isoDuration: string): string {
-  // Parse ISO 8601 duration (e.g., PT1H23M45S)
   const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return '0:00';
   
@@ -88,7 +85,6 @@ function formatDuration(isoDuration: string): string {
 async function searchYouTube(query: string, apiKey: string, maxResults: number = 10): Promise<YouTubeVideo[]> {
   console.log(`Searching YouTube for: "${query}"`);
   
-  // Search for videos
   const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=medium&videoEmbeddable=true&maxResults=${maxResults}&key=${apiKey}`;
   
   const searchResponse = await fetch(searchUrl);
@@ -105,7 +101,6 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
     return [];
   }
   
-  // Get video details (views, duration)
   const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${videoIds}&key=${apiKey}`;
   
   const detailsResponse = await fetch(detailsUrl);
@@ -120,7 +115,6 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
     const viewCount = parseInt(item.statistics?.viewCount || '0');
     const likeCount = parseInt(item.statistics?.likeCount || '0');
     
-    // Calculate engagement score based on views, likes, and recency
     const publishDate = new Date(item.snippet.publishedAt);
     const daysSincePublish = Math.max(1, (Date.now() - publishDate.getTime()) / (1000 * 60 * 60 * 24));
     const engagementScore = Math.round(
@@ -129,7 +123,6 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
       (viewCount > 100000 ? 50 : 0)
     );
     
-    // Get best available thumbnail
     const thumbnails = item.snippet.thumbnails;
     const thumbnail = thumbnails?.medium?.url || thumbnails?.default?.url || '';
     
@@ -146,7 +139,6 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
     };
   }) || [];
   
-  // Sort by engagement score
   return videos.sort((a, b) => b.engagementScore - a.engagementScore);
 }
 
@@ -166,9 +158,61 @@ serve(async (req) => {
   }
 
   try {
+    // Get authorization header and verify user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create Supabase client with user context
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Get user from auth header
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Consume credits atomically using service role
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const { data: consumed, error: creditError } = await serviceClient.rpc('consume_credits', { 
+      uid: user.id, 
+      amount: CREDIT_COST 
+    });
+
+    if (creditError) {
+      console.error('Credit consumption error:', creditError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify credits' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!consumed) {
+      return new Response(
+        JSON.stringify({ error: 'Insufficient credits. Please wait for monthly reset.' }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Consumed ${CREDIT_COST} credit(s) for user ${user.id}`);
+
     const { topic } = await req.json();
     
-    // Validate and sanitize input
     const validation = sanitizeInput(topic);
     if (!validation.isValid) {
       return new Response(
@@ -190,7 +234,6 @@ serve(async (req) => {
 
     console.log('Finding videos for topic:', sanitizedTopic);
 
-    // Use AI to break down the topic into subtasks
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -250,7 +293,6 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
     
     console.log('AI response:', content);
 
-    // Parse the JSON response
     let parsedData;
     try {
       let cleanContent = content.trim();
@@ -260,7 +302,6 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
       parsedData = JSON.parse(cleanContent.trim());
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
-      // Fallback: create simple subtasks
       parsedData = {
         subtasks: [
           { title: `Introduction to ${sanitizedTopic}`, searchQuery: `${sanitizedTopic} introduction tutorial` },
@@ -271,7 +312,6 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
       };
     }
 
-    // Search YouTube for the main topic
     const mainVideos = await searchYouTube(parsedData.mainSearchQuery || `${sanitizedTopic} tutorial`, YOUTUBE_API_KEY, 5);
     const primaryVideo = mainVideos[0];
 
@@ -279,7 +319,6 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
       throw new Error('No videos found for this topic');
     }
 
-    // Search YouTube for each subtask (5 videos each)
     const subtasksWithVideos = await Promise.all(
       (parsedData.subtasks || []).slice(0, 5).map(async (subtask: any, idx: number) => {
         try {

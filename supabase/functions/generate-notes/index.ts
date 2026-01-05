@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Credit cost for this operation
+const CREDIT_COST = 4;
+
 // Input validation and sanitization constants
 const MAX_TITLE_LENGTH = 500;
 const MAX_ID_LENGTH = 100;
@@ -25,9 +28,6 @@ const FORBIDDEN_PATTERNS = [
   /override\s+instructions/i,
 ];
 
-/**
- * Validates and sanitizes user input to prevent prompt injection
- */
 function sanitizeInput(input: string, maxLength: number): { isValid: boolean; sanitized: string; error?: string } {
   if (!input || typeof input !== 'string') {
     return { isValid: false, sanitized: '', error: 'Input must be a non-empty string' };
@@ -41,7 +41,6 @@ function sanitizeInput(input: string, maxLength: number): { isValid: boolean; sa
     return { isValid: false, sanitized: '', error: `Input exceeds maximum length of ${maxLength} characters` };
   }
 
-  // Check for forbidden patterns (potential prompt injection)
   for (const pattern of FORBIDDEN_PATTERNS) {
     if (pattern.test(sanitized)) {
       console.warn('Potential prompt injection detected:', sanitized.substring(0, 50));
@@ -49,7 +48,6 @@ function sanitizeInput(input: string, maxLength: number): { isValid: boolean; sa
     }
   }
 
-  // Remove potentially dangerous characters
   sanitized = sanitized
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/[<>]/g, '')
@@ -59,9 +57,6 @@ function sanitizeInput(input: string, maxLength: number): { isValid: boolean; sa
   return { isValid: true, sanitized };
 }
 
-/**
- * Validates ID format (alphanumeric with dashes/underscores)
- */
 function validateId(id: string): { isValid: boolean; error?: string } {
   if (!id || typeof id !== 'string') {
     return { isValid: false, error: 'ID must be a non-empty string' };
@@ -69,7 +64,6 @@ function validateId(id: string): { isValid: boolean; error?: string } {
   if (id.length > MAX_ID_LENGTH) {
     return { isValid: false, error: `ID exceeds maximum length of ${MAX_ID_LENGTH} characters` };
   }
-  // Allow UUID format and YouTube video IDs
   if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
     return { isValid: false, error: 'Invalid ID format' };
   }
@@ -77,7 +71,6 @@ function validateId(id: string): { isValid: boolean; error?: string } {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -88,7 +81,6 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Get the authorization header to verify user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -97,14 +89,12 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Get user from auth header
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
       return new Response(
@@ -112,6 +102,34 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Consume credits atomically using service role
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const { data: consumed, error: creditError } = await serviceClient.rpc('consume_credits', { 
+      uid: user.id, 
+      amount: CREDIT_COST 
+    });
+
+    if (creditError) {
+      console.error('Credit consumption error:', creditError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify credits' }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!consumed) {
+      return new Response(
+        JSON.stringify({ error: 'Insufficient credits (4 required). Please wait for monthly reset.' }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Consumed ${CREDIT_COST} credit(s) for user ${user.id}`);
 
     const { videoTitle, videoId, todoId } = await req.json();
 
@@ -122,7 +140,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate and sanitize inputs
     const titleValidation = sanitizeInput(videoTitle, MAX_TITLE_LENGTH);
     if (!titleValidation.isValid) {
       return new Response(
@@ -151,7 +168,6 @@ serve(async (req) => {
 
     console.log(`Generating notes for video: ${sanitizedTitle} (${videoId})`);
 
-    // Call Lovable AI Gateway with Gemini model
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -215,7 +231,9 @@ Please create comprehensive notes that would help a student understand and retai
 
     console.log("Notes generated successfully");
 
-    // Save notes to database
+    // Check achievements after generating notes
+    await serviceClient.rpc('check_achievements', { uid: user.id });
+
     const { data: savedNote, error: saveError } = await supabaseClient
       .from("notes")
       .insert({
@@ -230,7 +248,6 @@ Please create comprehensive notes that would help a student understand and retai
 
     if (saveError) {
       console.error("Error saving notes:", saveError);
-      // Return the notes even if saving fails
       return new Response(
         JSON.stringify({ 
           notes: generatedNotes, 

@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Credit cost for this operation (adaptive questions are part of quiz flow, no extra charge)
+const CREDIT_COST = 0;
+
 const MAX_NOTES_LENGTH = 50000;
 const FORBIDDEN_PATTERNS = [
   /ignore\s+(all\s+)?previous\s+instructions/i,
