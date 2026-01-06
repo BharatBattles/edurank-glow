@@ -120,7 +120,7 @@ serve(async (req) => {
     }
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ error: "No authorization header" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -133,13 +133,19 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
+    // Validate JWT using getClaims
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error("Auth error:", claimsError);
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const userId = claimsData.claims.sub as string;
 
     const { todoId, notes } = await req.json();
 
@@ -191,7 +197,7 @@ serve(async (req) => {
     );
 
     const { data: consumed, error: creditError } = await serviceClient.rpc('consume_credits', { 
-      uid: user.id, 
+      uid: userId, 
       amount: CREDIT_COST 
     });
 
@@ -210,7 +216,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Consumed ${CREDIT_COST} credit(s) for user ${user.id}`);
+    console.log(`Consumed ${CREDIT_COST} credit(s) for user ${userId}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -319,7 +325,7 @@ serve(async (req) => {
     const { data: savedQuiz, error: saveError } = await supabaseClient
       .from("quizzes")
       .insert({
-        user_id: user.id,
+        user_id: userId,
         todo_id: todoId,
         questions: questions,
       })
