@@ -24,6 +24,7 @@ import Logo from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useRateLimiter } from '@/hooks/useRateLimiter';
+import WeakTopicCards from '@/components/WeakTopicCards';
 
 interface Todo {
   id: string;
@@ -295,6 +296,9 @@ const Dashboard = () => {
           </div>
           <Progress value={progress} className="h-3" />
         </section>
+
+        {/* Weak Topic Recommendations */}
+        <WeakTopicCards />
 
         {/* Todo List */}
         <section className="space-y-4 animate-slide-up">

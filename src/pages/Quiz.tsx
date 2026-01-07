@@ -32,6 +32,13 @@ interface Question {
   explanation?: string;
 }
 
+interface QuestionTiming {
+  questionIndex: number;
+  startTime: number;
+  endTime?: number;
+  timeTakenSeconds: number;
+}
+
 const Quiz = () => {
   const { quizId } = useParams();
   const navigate = useNavigate();
@@ -49,6 +56,10 @@ const Quiz = () => {
   const [adaptiveMode, setAdaptiveMode] = useState(false);
   const [currentDifficulty, setCurrentDifficulty] = useState<string>('medium');
   const [generatingAdaptive, setGeneratingAdaptive] = useState(false);
+  const [videoId, setVideoId] = useState<string | null>(null);
+  const [savedQuizId, setSavedQuizId] = useState<string | null>(null);
+  const [questionTimings, setQuestionTimings] = useState<QuestionTiming[]>([]);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
 
   useEffect(() => {
     if (quizId && user) {
@@ -58,15 +69,28 @@ const Quiz = () => {
 
   const fetchOrGenerateQuiz = async () => {
     try {
+      // Get video_id from todo
+      const { data: todoData } = await supabase
+        .from('todos')
+        .select('video_id')
+        .eq('id', quizId)
+        .maybeSingle();
+      
+      if (todoData?.video_id) {
+        setVideoId(todoData.video_id);
+      }
+
       const { data: existingQuiz } = await supabase
         .from('quizzes')
-        .select('questions')
+        .select('id, questions')
         .eq('todo_id', quizId)
         .maybeSingle();
 
       if (existingQuiz?.questions) {
         const parsedQuestions = existingQuiz.questions as unknown as Question[];
         setQuestions(parsedQuestions);
+        setSavedQuizId(existingQuiz.id);
+        setQuestionStartTime(Date.now());
         setLoading(false);
         return;
       }
@@ -100,6 +124,10 @@ const Quiz = () => {
       }
 
       setQuestions(data.quiz || []);
+      if (data.quizId) {
+        setSavedQuizId(data.quizId);
+      }
+      setQuestionStartTime(Date.now());
     } catch (error: any) {
       console.error('Error fetching quiz:', error);
       
@@ -130,6 +158,17 @@ const Quiz = () => {
       toast.error('Please select an answer');
       return;
     }
+
+    // Record time taken for this question
+    const endTime = Date.now();
+    const timeTakenSeconds = (endTime - questionStartTime) / 1000;
+    
+    setQuestionTimings(prev => [...prev, {
+      questionIndex: currentQuestion,
+      startTime: questionStartTime,
+      endTime,
+      timeTakenSeconds: Math.round(timeTakenSeconds * 10) / 10, // Round to 1 decimal
+    }]);
 
     setIsSubmitted(true);
     const newAnswers = [...answers, selectedAnswer];
@@ -181,6 +220,7 @@ const Quiz = () => {
         setCurrentQuestion(currentQuestion + 1);
         setSelectedAnswer(null);
         setIsSubmitted(false);
+        setQuestionStartTime(Date.now()); // Reset timer for new question
         return;
       }
     }
@@ -189,8 +229,9 @@ const Quiz = () => {
       setCurrentQuestion(currentQuestion + 1);
       setSelectedAnswer(null);
       setIsSubmitted(false);
+      setQuestionStartTime(Date.now()); // Reset timer for next question
     } else {
-      saveResults();
+      await saveResults();
       setShowResult(true);
     }
   };
@@ -210,6 +251,37 @@ const Quiz = () => {
         total_questions: questions.length,
         answers: answers,
       });
+
+      // Analyze weakness after saving results
+      if (videoId && savedQuizId) {
+        const questionAttempts = questions.map((q, index) => ({
+          questionText: q.question,
+          isCorrect: answers[index] === q.correctAnswer,
+          timeTakenSeconds: questionTimings[index]?.timeTakenSeconds || 0,
+          difficulty: q.difficulty || 'medium',
+        }));
+
+        try {
+          const { data, error } = await supabase.functions.invoke('analyze-weakness', {
+            body: {
+              todoId: quizId,
+              videoId,
+              quizId: savedQuizId,
+              questions: questionAttempts,
+            },
+          });
+
+          if (error) {
+            console.error('Weakness analysis error:', error);
+          } else if (data?.weakTopics?.length > 0) {
+            toast.info(`Found ${data.weakTopics.length} topic(s) to improve`, {
+              icon: <AlertCircle className="h-4 w-4 text-primary" />,
+            });
+          }
+        } catch (analysisError) {
+          console.error('Weakness analysis failed:', analysisError);
+        }
+      }
     } catch (error) {
       console.error('Error saving results:', error);
     }
