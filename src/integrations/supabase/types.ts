@@ -44,6 +44,44 @@ export type Database = {
         }
         Relationships: []
       }
+      global_topic_stats: {
+        Row: {
+          avg_accuracy: number
+          avg_time_seconds: number
+          id: string
+          topic_id: string
+          total_attempts: number
+          total_correct: number
+          updated_at: string
+        }
+        Insert: {
+          avg_accuracy?: number
+          avg_time_seconds?: number
+          id?: string
+          topic_id: string
+          total_attempts?: number
+          total_correct?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_accuracy?: number
+          avg_time_seconds?: number
+          id?: string
+          topic_id?: string
+          total_attempts?: number
+          total_correct?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_topic_stats_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: true
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboard_stats: {
         Row: {
           average_score: number
@@ -160,6 +198,73 @@ export type Database = {
         }
         Relationships: []
       }
+      question_attempts: {
+        Row: {
+          attempt_number: number
+          created_at: string
+          difficulty_level: string
+          id: string
+          is_correct: boolean
+          question_text: string
+          quiz_id: string
+          time_taken_seconds: number
+          todo_id: string
+          topic_id: string | null
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          attempt_number?: number
+          created_at?: string
+          difficulty_level?: string
+          id?: string
+          is_correct: boolean
+          question_text: string
+          quiz_id: string
+          time_taken_seconds?: number
+          todo_id: string
+          topic_id?: string | null
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          attempt_number?: number
+          created_at?: string
+          difficulty_level?: string
+          id?: string
+          is_correct?: boolean
+          question_text?: string
+          quiz_id?: string
+          time_taken_seconds?: number
+          todo_id?: string
+          topic_id?: string | null
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_attempts_todo_id_fkey"
+            columns: ["todo_id"]
+            isOneToOne: false
+            referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_attempts_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_results: {
         Row: {
           answers: Json
@@ -232,6 +337,69 @@ export type Database = {
             columns: ["todo_id"]
             isOneToOne: false
             referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recommendation_queue: {
+        Row: {
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          is_completed: boolean
+          is_dismissed: boolean
+          priority: number
+          recommendation_type: string
+          title: string
+          todo_id: string | null
+          topic_id: string
+          user_id: string
+          weakness_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_completed?: boolean
+          is_dismissed?: boolean
+          priority?: number
+          recommendation_type: string
+          title: string
+          todo_id?: string | null
+          topic_id: string
+          user_id: string
+          weakness_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_completed?: boolean
+          is_dismissed?: boolean
+          priority?: number
+          recommendation_type?: string
+          title?: string
+          todo_id?: string | null
+          topic_id?: string
+          user_id?: string
+          weakness_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_queue_todo_id_fkey"
+            columns: ["todo_id"]
+            isOneToOne: false
+            referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendation_queue_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
@@ -357,6 +525,27 @@ export type Database = {
         }
         Relationships: []
       }
+      topics: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -416,6 +605,68 @@ export type Database = {
         }
         Relationships: []
       }
+      user_topic_performance: {
+        Row: {
+          avg_time_seconds: number
+          correct_answers: number
+          created_at: string
+          id: string
+          last_updated: string
+          repeated_mistakes: number
+          strength_status: string
+          topic_id: string
+          total_questions: number
+          total_time_seconds: number
+          user_id: string
+          weakness_score: number
+          wrong_on_easy: number
+          wrong_on_hard: number
+          wrong_on_medium: number
+        }
+        Insert: {
+          avg_time_seconds?: number
+          correct_answers?: number
+          created_at?: string
+          id?: string
+          last_updated?: string
+          repeated_mistakes?: number
+          strength_status?: string
+          topic_id: string
+          total_questions?: number
+          total_time_seconds?: number
+          user_id: string
+          weakness_score?: number
+          wrong_on_easy?: number
+          wrong_on_hard?: number
+          wrong_on_medium?: number
+        }
+        Update: {
+          avg_time_seconds?: number
+          correct_answers?: number
+          created_at?: string
+          id?: string
+          last_updated?: string
+          repeated_mistakes?: number
+          strength_status?: string
+          topic_id?: string
+          total_questions?: number
+          total_time_seconds?: number
+          user_id?: string
+          weakness_score?: number
+          wrong_on_easy?: number
+          wrong_on_hard?: number
+          wrong_on_medium?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_topic_performance_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_progress: {
         Row: {
           completed: boolean
@@ -456,6 +707,63 @@ export type Database = {
             columns: ["todo_id"]
             isOneToOne: false
             referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_topic_analysis: {
+        Row: {
+          correct_count: number
+          created_at: string
+          id: string
+          is_weak_topic: boolean
+          mastery_score: number
+          questions_count: number
+          todo_id: string
+          topic_id: string
+          updated_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          correct_count?: number
+          created_at?: string
+          id?: string
+          is_weak_topic?: boolean
+          mastery_score?: number
+          questions_count?: number
+          todo_id: string
+          topic_id: string
+          updated_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          correct_count?: number
+          created_at?: string
+          id?: string
+          is_weak_topic?: boolean
+          mastery_score?: number
+          questions_count?: number
+          todo_id?: string
+          topic_id?: string
+          updated_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_topic_analysis_todo_id_fkey"
+            columns: ["todo_id"]
+            isOneToOne: false
+            referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_topic_analysis_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]

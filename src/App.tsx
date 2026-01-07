@@ -16,6 +16,7 @@ import QuizHistory from "./pages/QuizHistory";
 import Leaderboard from "./pages/Leaderboard";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
+import FixWeakAreas from "./pages/FixWeakAreas";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Leaderboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/fix-weak-areas"
+              element={
+                <ProtectedRoute>
+                  <FixWeakAreas />
                 </ProtectedRoute>
               }
             />
