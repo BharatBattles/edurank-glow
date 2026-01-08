@@ -70,15 +70,73 @@ function validateId(id: string): { isValid: boolean; error?: string } {
   return { isValid: true };
 }
 
+// Fetch video context using Perplexity API
+async function fetchVideoContext(videoTitle: string, videoId: string): Promise<string> {
+  const PERPLEXITY_API_KEY = Deno.env.get("perplexity_api_key");
+  
+  if (!PERPLEXITY_API_KEY) {
+    console.log("Perplexity API key not configured, skipping context fetch");
+    return "";
+  }
+
+  try {
+    console.log("Fetching video context using Perplexity...");
+    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "sonar",
+        messages: [
+          {
+            role: "system",
+            content: "You are a research assistant. Provide comprehensive educational content and key concepts related to the given YouTube video topic. Focus on factual information that would be helpful for study notes."
+          },
+          {
+            role: "user",
+            content: `Research the topic of this YouTube video and provide key educational content:
+Title: "${videoTitle}"
+YouTube Video ID: ${videoId}
+
+Provide:
+1. Main concepts and definitions related to this topic
+2. Key facts and important points
+3. Related subtopics and their explanations
+4. Study-worthy information
+
+Focus on educational content that would help a student understand this topic thoroughly.`
+          }
+        ],
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Perplexity API error:", response.status);
+      return "";
+    }
+
+    const data = await response.json();
+    const context = data.choices?.[0]?.message?.content || "";
+    console.log("Video context fetched successfully, length:", context.length);
+    return context;
+  } catch (error) {
+    console.error("Error fetching video context:", error);
+    return "";
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const NVIDIA_API_KEY = Deno.env.get("nvidiaapi_key");
+    if (!NVIDIA_API_KEY) {
+      throw new Error("NVIDIA API key is not configured");
     }
 
     const authHeader = req.headers.get("Authorization");
@@ -168,42 +226,64 @@ serve(async (req) => {
 
     console.log(`Generating notes for video: ${sanitizedTitle} (${videoId})`);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Fetch video context using Perplexity
+    const videoContext = await fetchVideoContext(sanitizedTitle, videoId);
+
+    // Generate notes using NVIDIA AI
+    const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": `Bearer ${NVIDIA_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
         messages: [
           {
             role: "system",
-            content: `You are an expert educational content summarizer. Your task is to generate comprehensive study notes for educational videos. 
-            
-Create well-structured notes that include:
-1. **Key Concepts** - Main ideas and definitions
-2. **Important Points** - Critical takeaways
-3. **Summary** - A brief overview
-4. **Study Tips** - How to remember and apply the material
+            content: `You are an expert educational content creator specializing in generating comprehensive, well-structured study notes. 
 
-Format your response in clear markdown with headers and bullet points.`,
+Your notes must be:
+- Accurate and based on the provided context
+- Well-organized with clear headings
+- Student-friendly with practical examples
+- Complete with key definitions and concepts
+
+Format your response in clear markdown with:
+## Key Concepts
+## Important Points  
+## Summary
+## Study Tips`
           },
           {
             role: "user",
-            content: `Generate detailed study notes for an educational video titled: "${sanitizedTitle}"
+            content: `Generate detailed, comprehensive study notes for an educational video.
 
-The video ID is: ${videoId}
+**Video Title:** "${sanitizedTitle}"
+**Video ID:** ${videoId}
 
-Please create comprehensive notes that would help a student understand and retain the key concepts from this video.`,
+${videoContext ? `**Research Context:**
+${videoContext}
+
+Use the above research context to create accurate, detailed study notes.` : ""}
+
+Create professional study notes that would help a student:
+1. Understand the core concepts
+2. Remember key facts and definitions
+3. Apply the knowledge effectively
+4. Prepare for exams on this topic
+
+Make the notes comprehensive and educational.`
           },
         ],
+        temperature: 0.3,
+        max_tokens: 4000,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("NVIDIA API error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -212,14 +292,7 @@ Please create comprehensive notes that would help a student understand and retai
         );
       }
       
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add funds to continue using AI features." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`NVIDIA API error: ${response.status}`);
     }
 
     const aiData = await response.json();
@@ -229,7 +302,7 @@ Please create comprehensive notes that would help a student understand and retai
       throw new Error("No content generated from AI");
     }
 
-    console.log("Notes generated successfully");
+    console.log("Notes generated successfully using NVIDIA AI");
 
     // Check achievements after generating notes
     await serviceClient.rpc('check_achievements', { uid: user.id });

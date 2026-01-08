@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Coins, RefreshCw, Loader2, Trophy, Award } from 'lucide-react';
+import { ArrowLeft, User, Coins, RefreshCw, Loader2, Trophy, Award, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import Logo from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AchievementsBadges from '@/components/AchievementsBadges';
+import ImprovementChart from '@/components/ImprovementChart';
 
 interface UserCredits {
   credits_remaining: number;
@@ -118,6 +119,20 @@ const Profile = () => {
               <p className="text-muted-foreground">{email}</p>
             </div>
           </div>
+        </section>
+
+        {/* Improvement Tracking Chart */}
+        <section className="glass-card rounded-2xl p-6 animate-slide-up">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold">Improvement Tracking</h2>
+              <p className="text-sm text-muted-foreground">Your weakness scores over time</p>
+            </div>
+          </div>
+          <ImprovementChart />
         </section>
 
         {/* Credits Section */}
