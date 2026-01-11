@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import Logo from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import AchievementsBadges from '@/components/AchievementsBadges';
+import AchievementsPanel from '@/components/achievements/AchievementsPanel';
 import ImprovementChart from '@/components/ImprovementChart';
 
 interface UserCredits {
@@ -290,7 +290,7 @@ const Profile = () => {
               <p className="text-sm text-muted-foreground">Unlock badges as you learn</p>
             </div>
           </div>
-          <AchievementsBadges />
+          <AchievementsPanel />
         </section>
 
         {/* Navigation Links */}

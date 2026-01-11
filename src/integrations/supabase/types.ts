@@ -14,33 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievement_progress: {
+        Row: {
+          achievement_id: string
+          created_at: string
+          current_value: number
+          id: string
+          last_updated: string
+          metadata: Json | null
+          target_value: number
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          created_at?: string
+          current_value?: number
+          id?: string
+          last_updated?: string
+          metadata?: Json | null
+          target_value?: number
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          created_at?: string
+          current_value?: number
+          id?: string
+          last_updated?: string
+          metadata?: Json | null
+          target_value?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "achievement_progress_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       achievements: {
         Row: {
+          anti_cheat_rules: Json | null
+          category: string
           created_at: string
           description: string
           icon: string
           id: string
+          is_hidden: boolean
           name: string
           requirement_type: string
           requirement_value: number
+          reward_type: string
+          reward_value: Json
+          sort_order: number
+          tier: string
+          unlock_formula: string | null
         }
         Insert: {
+          anti_cheat_rules?: Json | null
+          category?: string
           created_at?: string
           description: string
           icon?: string
           id?: string
+          is_hidden?: boolean
           name: string
           requirement_type: string
           requirement_value: number
+          reward_type?: string
+          reward_value?: Json
+          sort_order?: number
+          tier?: string
+          unlock_formula?: string | null
         }
         Update: {
+          anti_cheat_rules?: Json | null
+          category?: string
           created_at?: string
           description?: string
           icon?: string
           id?: string
+          is_hidden?: boolean
           name?: string
           requirement_type?: string
           requirement_value?: number
+          reward_type?: string
+          reward_value?: Json
+          sort_order?: number
+          tier?: string
+          unlock_formula?: string | null
         }
         Relationships: []
       }
@@ -176,25 +241,43 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           id: string
+          leaderboard_visibility: string
           name: string | null
+          profile_highlights: Json | null
+          streak_protections: number
+          total_xp: number
+          unlocked_modes: Json | null
           updated_at: string
           user_id: string
+          xp_multiplier: number
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          leaderboard_visibility?: string
           name?: string | null
+          profile_highlights?: Json | null
+          streak_protections?: number
+          total_xp?: number
+          unlocked_modes?: Json | null
           updated_at?: string
           user_id: string
+          xp_multiplier?: number
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          leaderboard_visibility?: string
           name?: string | null
+          profile_highlights?: Json | null
+          streak_protections?: number
+          total_xp?: number
+          unlocked_modes?: Json | null
           updated_at?: string
           user_id?: string
+          xp_multiplier?: number
         }
         Relationships: []
       }
@@ -270,9 +353,13 @@ export type Database = {
           answers: Json
           correct_answers: number
           created_at: string
+          difficulty: string | null
           id: string
+          previous_score: number | null
           score: number
+          time_taken_seconds: number | null
           todo_id: string
+          topic_id: string | null
           total_questions: number
           user_id: string
         }
@@ -280,9 +367,13 @@ export type Database = {
           answers?: Json
           correct_answers: number
           created_at?: string
+          difficulty?: string | null
           id?: string
+          previous_score?: number | null
           score: number
+          time_taken_seconds?: number | null
           todo_id: string
+          topic_id?: string | null
           total_questions: number
           user_id: string
         }
@@ -290,9 +381,13 @@ export type Database = {
           answers?: Json
           correct_answers?: number
           created_at?: string
+          difficulty?: string | null
           id?: string
+          previous_score?: number | null
           score?: number
+          time_taken_seconds?: number | null
           todo_id?: string
+          topic_id?: string | null
           total_questions?: number
           user_id?: string
         }
@@ -534,6 +629,59 @@ export type Database = {
         }
         Relationships: []
       }
+      topic_mastery: {
+        Row: {
+          average_score: number
+          best_score: number
+          created_at: string
+          fastest_completion: number | null
+          high_score_streak: number
+          id: string
+          quizzes_completed: number
+          topic_id: string
+          total_correct: number
+          total_questions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          average_score?: number
+          best_score?: number
+          created_at?: string
+          fastest_completion?: number | null
+          high_score_streak?: number
+          id?: string
+          quizzes_completed?: number
+          topic_id: string
+          total_correct?: number
+          total_questions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          average_score?: number
+          best_score?: number
+          created_at?: string
+          fastest_completion?: number | null
+          high_score_streak?: number
+          id?: string
+          quizzes_completed?: number
+          topic_id?: string
+          total_correct?: number
+          total_questions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_mastery_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topics: {
         Row: {
           created_at: string
@@ -559,18 +707,30 @@ export type Database = {
         Row: {
           achievement_id: string
           id: string
+          progress: number
+          progress_max: number
+          reward_claimed: boolean
+          reward_expires_at: string | null
           unlocked_at: string
           user_id: string
         }
         Insert: {
           achievement_id: string
           id?: string
+          progress?: number
+          progress_max?: number
+          reward_claimed?: boolean
+          reward_expires_at?: string | null
           unlocked_at?: string
           user_id: string
         }
         Update: {
           achievement_id?: string
           id?: string
+          progress?: number
+          progress_max?: number
+          reward_claimed?: boolean
+          reward_expires_at?: string | null
           unlocked_at?: string
           user_id?: string
         }
@@ -613,6 +773,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_rewards: {
+        Row: {
+          achievement_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          reward_type: string
+          reward_value: Json
+          updated_at: string
+          user_id: string
+          uses_remaining: number | null
+        }
+        Insert: {
+          achievement_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          reward_type: string
+          reward_value: Json
+          updated_at?: string
+          user_id: string
+          uses_remaining?: number | null
+        }
+        Update: {
+          achievement_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          reward_type?: string
+          reward_value?: Json
+          updated_at?: string
+          user_id?: string
+          uses_remaining?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_rewards_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_topic_performance: {
         Row: {
@@ -790,6 +997,20 @@ export type Database = {
           just_unlocked: boolean
         }[]
       }
+      check_achievements_v2: {
+        Args: { uid: string }
+        Returns: {
+          achievement_id: string
+          achievement_name: string
+          category: string
+          just_unlocked: boolean
+          progress: number
+          progress_max: number
+          reward_type: string
+          reward_value: Json
+          tier: string
+        }[]
+      }
       check_and_reset_credits: {
         Args: { uid: string }
         Returns: {
@@ -801,6 +1022,16 @@ export type Database = {
       consume_credits: {
         Args: { amount?: number; uid: string }
         Returns: boolean
+      }
+      update_achievement_progress: {
+        Args: {
+          p_achievement_id: string
+          p_current_value: number
+          p_metadata?: Json
+          p_target_value: number
+          p_user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
