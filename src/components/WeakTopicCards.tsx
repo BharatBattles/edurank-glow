@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import VideoPlayerDialog from './VideoPlayerDialog';
 
 interface WeakTopic {
   id: string;
@@ -48,6 +49,11 @@ const WeakTopicCards = () => {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [selectedVideo, setSelectedVideo] = useState<{
+    videoId: string;
+    videoTitle?: string;
+    videoChannel?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -228,7 +234,11 @@ const WeakTopicCards = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(`https://www.youtube.com/watch?v=${rec.videoId}`, '_blank')}
+                      onClick={() => setSelectedVideo({
+                        videoId: rec.videoId!,
+                        videoTitle: rec.videoTitle || undefined,
+                        videoChannel: rec.videoChannel || undefined,
+                      })}
                     >
                       <Play className="h-3 w-3 mr-1" />
                       Watch
@@ -306,6 +316,14 @@ const WeakTopicCards = () => {
           </div>
         </div>
       )}
+      {/* Video Player Dialog */}
+      <VideoPlayerDialog
+        open={!!selectedVideo}
+        onOpenChange={(open) => !open && setSelectedVideo(null)}
+        videoId={selectedVideo?.videoId || ''}
+        videoTitle={selectedVideo?.videoTitle}
+        videoChannel={selectedVideo?.videoChannel}
+      />
     </section>
   );
 };
