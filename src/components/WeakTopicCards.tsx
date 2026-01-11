@@ -216,51 +216,75 @@ const WeakTopicCards = () => {
           {visibleRecommendations.map((rec) => (
             <div
               key={rec.id}
-              className="glass-card rounded-xl p-4 border-l-4 border-l-destructive/70 hover:neon-glow transition-all duration-300"
+              className="glass-card rounded-xl overflow-hidden border-l-4 border-l-destructive/70 hover:neon-glow transition-all duration-300"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
-                    <span className="font-medium">{rec.title}</span>
-                    <Badge variant="destructive" className="text-xs">
-                      {Math.round(rec.weaknessScore)}% weak
-                    </Badge>
+              <div className="flex gap-4">
+                {/* Video Thumbnail */}
+                {rec.videoId && (
+                  <button
+                    onClick={() => setSelectedVideo({
+                      videoId: rec.videoId!,
+                      videoTitle: rec.videoTitle || undefined,
+                      videoChannel: rec.videoChannel || undefined,
+                    })}
+                    className="relative flex-shrink-0 w-40 h-24 group cursor-pointer"
+                  >
+                    <img
+                      src={`https://img.youtube.com/vi/${rec.videoId}/mqdefault.jpg`}
+                      alt={rec.videoTitle || 'Video thumbnail'}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-10 h-10 rounded-full bg-primary/90 flex items-center justify-center">
+                        <Play className="h-5 w-5 text-primary-foreground fill-current" />
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center group-hover:opacity-0 transition-opacity">
+                      <div className="w-8 h-8 rounded-full bg-black/60 flex items-center justify-center">
+                        <Play className="h-4 w-4 text-white fill-current" />
+                      </div>
+                    </div>
+                  </button>
+                )}
+                
+                {/* Content */}
+                <div className="flex-1 min-w-0 p-4 pl-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+                        <span className="font-medium">{rec.title}</span>
+                        <Badge variant="destructive" className="text-xs">
+                          {Math.round(rec.weaknessScore)}% weak
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{rec.description}</p>
+                      {rec.videoTitle && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                          📺 {rec.videoTitle}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        variant="neon"
+                        size="sm"
+                        onClick={() => rec.todoId && navigate(`/quiz/${rec.todoId}`)}
+                        disabled={!rec.todoId}
+                      >
+                        Fix Now
+                        <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => dismissRecommendation(rec.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">{rec.description}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {rec.videoId && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedVideo({
-                        videoId: rec.videoId!,
-                        videoTitle: rec.videoTitle || undefined,
-                        videoChannel: rec.videoChannel || undefined,
-                      })}
-                    >
-                      <Play className="h-3 w-3 mr-1" />
-                      Watch
-                    </Button>
-                  )}
-                  <Button
-                    variant="neon"
-                    size="sm"
-                    onClick={() => rec.todoId && navigate(`/quiz/${rec.todoId}`)}
-                    disabled={!rec.todoId}
-                  >
-                    Fix Now
-                    <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => dismissRecommendation(rec.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
             </div>
