@@ -162,10 +162,10 @@ const Leaderboard = () => {
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {entry.display_name}
+                          <p className="font-medium truncate flex items-center gap-2">
+                            <span>{entry.display_name || 'Anonymous'}</span>
                             {entry.user_id === user?.id && (
-                              <Badge variant="secondary" className="ml-2 text-xs">You</Badge>
+                              <Badge variant="secondary" className="text-xs">You</Badge>
                             )}
                           </p>
                           <div className="flex items-center gap-3 text-sm text-muted-foreground">

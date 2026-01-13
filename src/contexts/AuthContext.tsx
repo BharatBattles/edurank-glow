@@ -7,6 +7,12 @@ interface Profile {
   user_id: string;
   name: string | null;
   avatar_url: string | null;
+  total_xp: number;
+  xp_multiplier: number;
+  streak_protections: number;
+  leaderboard_visibility: string;
+  profile_highlights: unknown;
+  unlocked_modes: unknown;
 }
 
 interface AuthContextType {

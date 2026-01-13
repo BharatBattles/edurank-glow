@@ -25,6 +25,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useRateLimiter } from '@/hooks/useRateLimiter';
 import WeakTopicCards from '@/components/WeakTopicCards';
+import XpLevelBar from '@/components/header/XpLevelBar';
+import StreakDisplay from '@/components/header/StreakDisplay';
+import StreakProtectionModal from '@/components/header/StreakProtectionModal';
+import { useUserStats } from '@/hooks/useUserStats';
 
 interface Todo {
   id: string;
@@ -39,12 +43,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, logout } = useAuth();
   const { canMakeRequest, isRateLimited } = useRateLimiter();
+  const { stats, useStreakProtection } = useUserStats();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [showInput, setShowInput] = useState(false);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [streakModalOpen, setStreakModalOpen] = useState(false);
 
   const completedCount = todos.filter((t) => t.completed).length;
   const progress = todos.length > 0 ? (completedCount / todos.length) * 100 : 0;
@@ -258,10 +264,32 @@ const Dashboard = () => {
     <div className="min-h-screen pb-24">
       {/* Header */}
       <header className="sticky top-0 z-50 glass-card border-b border-border/50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <Logo size="sm" />
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden sm:block">
+          
+          {/* XP Bar and Streak Display */}
+          <div className="flex items-center gap-2">
+            {stats && (
+              <>
+                <XpLevelBar
+                  level={stats.level}
+                  totalXp={stats.totalXp}
+                  xpProgress={stats.xpProgress}
+                  xpToNextLevel={stats.xpToNextLevel}
+                  xpMultiplier={stats.xpMultiplier}
+                />
+                <StreakDisplay
+                  currentStreak={stats.currentStreak}
+                  longestStreak={stats.longestStreak}
+                  streakProtections={stats.streakProtections}
+                  onStreakClick={() => setStreakModalOpen(true)}
+                />
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground hidden lg:block">
               Hi, {displayName}!
             </span>
             <Button variant="ghost" size="icon" onClick={() => navigate('/leaderboard')} title="Leaderboard">
@@ -276,6 +304,17 @@ const Dashboard = () => {
           </div>
         </div>
       </header>
+
+      {/* Streak Protection Modal */}
+      {stats && (
+        <StreakProtectionModal
+          open={streakModalOpen}
+          onOpenChange={setStreakModalOpen}
+          currentStreak={stats.currentStreak}
+          streakProtections={stats.streakProtections}
+          onUseProtection={useStreakProtection}
+        />
+      )}
 
       <main className="container mx-auto px-4 py-6 space-y-8">
         {/* Progress Section */}
