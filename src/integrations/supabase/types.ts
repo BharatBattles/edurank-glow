@@ -984,6 +984,81 @@ export type Database = {
           },
         ]
       }
+      weekly_goal_streaks: {
+        Row: {
+          created_at: string | null
+          current_week_streak: number | null
+          id: string
+          last_completed_week: string | null
+          longest_week_streak: number | null
+          total_weeks_completed: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_week_streak?: number | null
+          id?: string
+          last_completed_week?: string | null
+          longest_week_streak?: number | null
+          total_weeks_completed?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_week_streak?: number | null
+          id?: string
+          last_completed_week?: string | null
+          longest_week_streak?: number | null
+          total_weeks_completed?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      weekly_study_goals: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          current_value: number | null
+          goal_type: string
+          id: string
+          is_completed: boolean | null
+          target_value: number
+          updated_at: string | null
+          user_id: string
+          week_start: string
+          xp_reward: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          current_value?: number | null
+          goal_type: string
+          id?: string
+          is_completed?: boolean | null
+          target_value: number
+          updated_at?: string | null
+          user_id: string
+          week_start: string
+          xp_reward?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          current_value?: number | null
+          goal_type?: string
+          id?: string
+          is_completed?: boolean | null
+          target_value?: number
+          updated_at?: string | null
+          user_id?: string
+          week_start?: string
+          xp_reward?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1023,6 +1098,7 @@ export type Database = {
         Args: { amount?: number; uid: string }
         Returns: boolean
       }
+      get_week_start: { Args: { d?: string }; Returns: string }
       update_achievement_progress: {
         Args: {
           p_achievement_id: string

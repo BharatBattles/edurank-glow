@@ -19,6 +19,7 @@ import {
   Star,
   Award,
   BookOpen,
+  Users,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,8 @@ import PerformanceOverview from '@/components/analysis/PerformanceOverview';
 import StrengthsWeaknesses from '@/components/analysis/StrengthsWeaknesses';
 import StudyRecommendations from '@/components/analysis/StudyRecommendations';
 import QuizHistory from '@/components/analysis/QuizHistorySummary';
+import { WeeklyGoalTracker } from '@/components/analysis/WeeklyGoalTracker';
+import { TopicComparison } from '@/components/analysis/TopicComparison';
 
 const Analysis = () => {
   const navigate = useNavigate();
@@ -245,12 +248,19 @@ const Analysis = () => {
           </Card>
         </div>
 
+        {/* Weekly Goals Section */}
+        <WeeklyGoalTracker />
+
         {/* Tabs for different analysis views */}
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="glass-card w-full justify-start overflow-x-auto">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger value="compare" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Global Comparison
             </TabsTrigger>
             <TabsTrigger value="trends" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -269,6 +279,10 @@ const Analysis = () => {
           <TabsContent value="overview" className="space-y-6">
             <PerformanceOverview overallStats={overallStats} />
             <QuizHistory />
+          </TabsContent>
+
+          <TabsContent value="compare" className="space-y-6">
+            <TopicComparison />
           </TabsContent>
 
           <TabsContent value="trends" className="space-y-6">
