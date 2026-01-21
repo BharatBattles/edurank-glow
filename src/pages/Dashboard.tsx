@@ -29,6 +29,8 @@ import XpLevelBar from '@/components/header/XpLevelBar';
 import StreakDisplay from '@/components/header/StreakDisplay';
 import StreakProtectionModal from '@/components/header/StreakProtectionModal';
 import { useUserStats } from '@/hooks/useUserStats';
+import { WeeklyGoalsWidget } from '@/components/dashboard/WeeklyGoalsWidget';
+import { StudyRemindersCard } from '@/components/dashboard/StudyRemindersCard';
 
 interface Todo {
   id: string;
@@ -337,6 +339,12 @@ const Dashboard = () => {
             <span className="text-2xl font-bold neon-text">{Math.round(progress)}%</span>
           </div>
           <Progress value={progress} className="h-3" />
+        </section>
+
+        {/* Weekly Goals Widget + Study Reminders */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+          <WeeklyGoalsWidget />
+          <StudyRemindersCard />
         </section>
 
         {/* Weak Topic Recommendations */}
