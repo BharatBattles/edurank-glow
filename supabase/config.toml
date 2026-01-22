@@ -1,19 +1,23 @@
 project_id = "tahfemcxtbbixsvsurfq"
 
+# SECURITY: JWT verification is enabled for all functions
+# This ensures Supabase automatically validates auth tokens
+# before function execution, reducing attack surface
+
 [functions.generate-notes]
-verify_jwt = false
+verify_jwt = true
 
 [functions.find-video]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-quiz]
-verify_jwt = false
+verify_jwt = true
 
 [functions.adaptive-question]
-verify_jwt = false
+verify_jwt = true
 
 [functions.analyze-weakness]
-verify_jwt = false
+verify_jwt = true
 
 [functions.fix-weak-areas-quiz]
-verify_jwt = false
+verify_jwt = true

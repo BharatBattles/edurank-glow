@@ -1,10 +1,33 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Allowed origins for CORS - prevents CSRF attacks
+const ALLOWED_ORIGINS = [
+  // Production
+  'https://edurank.app',
+  'https://www.edurank.app',
+  
+  // Development
+  'http://localhost:5173',
+  'http://localhost:3000',
+  
+  // Fallback
+  'https://lovable.dev',
+];
+
+function getCORSHeaders(originHeader: string | null): Record<string, string> {
+  // Only allow requests from whitelisted origins
+  const allowedOrigin = ALLOWED_ORIGINS.includes(originHeader || '')
+    ? originHeader
+    : ALLOWED_ORIGINS[0];
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '3600',
+  };
+}
 
 // Input validation and sanitization constants
 const MAX_TITLE_LENGTH = 500;
@@ -78,6 +101,7 @@ async function fetchVideoContext(videoTitle: string, videoId: string): Promise<s
 
   try {
     console.log("Fetching video context using Perplexity...");
+    // Do NOT log the API key or embed it in URLs - use POST with headers instead
     const response = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
@@ -111,6 +135,7 @@ Focus on educational content that would help a student understand this topic tho
     });
 
     if (!response.ok) {
+      // Don't log the full response as it might contain sensitive headers
       console.error("Perplexity API error:", response.status);
       return "";
     }
@@ -120,43 +145,45 @@ Focus on educational content that would help a student understand this topic tho
     console.log("Video context fetched successfully, length:", context.length);
     return context;
   } catch (error) {
-    console.error("Error fetching video context:", error);
+    console.error("Error fetching video context:", error instanceof Error ? error.message : "Unknown error");
     return "";
   }
 }
 
-// Lovable AI call function
-async function callLovableAI(messages: { role: string; content: string }[]): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) {
-    throw new Error('LOVABLE_API_KEY is not configured');
+// Bytez AI call function (using GPT-4.1-mini for notes generation)
+async function callBytezAI(messages: { role: string; content: string }[]): Promise<string> {
+  const BYTEZ_API_KEY = Deno.env.get('BYTEZ_API_KEY');
+  if (!BYTEZ_API_KEY) {
+    throw new Error('BYTEZ_API_KEY is not configured');
   }
 
-  console.log('Calling Lovable AI...');
+  console.log('Calling Bytez AI (GPT-4.1-mini) for notes generation...');
   
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://api.bytez.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${BYTEZ_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-3-flash-preview',
+      model: 'openai/gpt-4.1-mini',
       messages,
+      temperature: 0.7,
+      max_tokens: 2000,
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Lovable AI error:', response.status, errorText);
+    console.error('Bytez AI error:', response.status);
     
     if (response.status === 429) {
       throw new Error('Rate limit exceeded. Please try again later.');
     }
-    if (response.status === 402) {
-      throw new Error('AI credits exhausted. Please add funds to continue.');
+    if (response.status === 401) {
+      throw new Error('Invalid API key or authentication failed.');
     }
-    throw new Error(`Lovable AI error: ${response.status}`);
+    throw new Error(`Bytez AI error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -164,11 +191,14 @@ async function callLovableAI(messages: { role: string; content: string }[]): Pro
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
+    const corsHeaders = getCORSHeaders(req.headers.get('origin'));
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const corsHeaders = getCORSHeaders(req.headers.get('origin'));
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
